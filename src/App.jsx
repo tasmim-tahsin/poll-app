@@ -1,22 +1,32 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import HomePage from './pages/HomePage';
 import AdminPage from './pages/AdminPage';
 import PollPage from './pages/PollPage';
 import ResultPage from './pages/ResultPage';
-import Navbar from './components/Navbar'; // Import your Navbar component
+import Navbar from './components/Navbar';
+
+const Layout = () => {
+  return (
+    <div>
+      <Navbar />
+      <main>
+        <Outlet />
+      </main>
+    </div>
+  );
+};
 
 const App = () => (
   <Router>
-    <div className="min-h-screen flex flex-col">
-      <Navbar /> {/* Add Navbar here - it will appear on all pages */}
-      <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<AdminPage />} />
-          <Route path="/poll/:sessionId" element={<PollPage />} />
-          <Route path="/result/:sessionId" element={<ResultPage />} />
-        </Routes>
-      </main>
-    </div>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/poll/:sessionId" element={<PollPage />} />
+        <Route path="/result/:sessionId" element={<ResultPage />} />
+      </Route>
+    </Routes>
   </Router>
 );
 

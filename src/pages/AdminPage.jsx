@@ -7,6 +7,7 @@ const AdminPage = () => {
   const [password, setPassword] = useState('');
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
+  const [customSessionId, setCustomSessionId] = useState('');
   const [sessionId, setSessionId] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [sessions, setSessions] = useState([]);
@@ -51,8 +52,8 @@ const AdminPage = () => {
   };
 
   const handleCreateSession = async () => {
-    if (!question.trim() || options.some(opt => !opt.trim())) {
-      alert('Please fill in the question and all options');
+    if (!customSessionId.trim() || !question.trim() || options.some(opt => !opt.trim())) {
+      alert('Please fill in the session name, question, and all options');
       return;
     }
 
@@ -61,11 +62,18 @@ const AdminPage = () => {
       // Create session
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
-        .insert([{ question: question.trim() }])
+        .insert([{ id: customSessionId.trim(), question: question.trim() }])
         .select()
         .single();
 
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        if (sessionError.code === '23505') { // Unique constraint violation
+          alert('This session name already exists. Please choose a different one.');
+        } else {
+          throw sessionError;
+        }
+        return;
+      }
 
       // Create options
       const optionsData = options
@@ -87,6 +95,7 @@ const AdminPage = () => {
       setQrCodeUrl(url);
       
       // Reset form
+      setCustomSessionId('');
       setQuestion('');
       setOptions(['', '']);
       
@@ -150,9 +159,18 @@ const AdminPage = () => {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
+            {/* Create New Poll */}
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-700">Create New Poll</h2>
               
+              <input
+                type="text"
+                placeholder="Enter custom session name (e.g., 'weekly-meeting')"
+                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={customSessionId}
+                onChange={(e) => setCustomSessionId(e.target.value)}
+              />
+
               <input
                 type="text"
                 placeholder="Enter poll question"
@@ -200,12 +218,13 @@ const AdminPage = () => {
               </button>
             </div>
 
+            {/* QR Code Display */}
             <div className="space-y-4">
               {qrCodeUrl && (
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-gray-700 mb-4">Scan to Vote</h3>
                   <QRCodeDisplay qrCodeUrl={qrCodeUrl} />
-                  <p className="text-sm text-gray-600 mt-2">Session ID: {sessionId}</p>
+                  <p className="text-sm text-gray-600 mt-2">Session Name: {sessionId}</p>
                   <div className="mt-4 space-x-2">
                     <a 
                       href={`/poll/${sessionId}`}
@@ -230,15 +249,16 @@ const AdminPage = () => {
           </div>
         </div>
 
+        {/* Sessions List */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">Recent Sessions</h2>
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">All Sessions</h2>
           <div className="space-y-3">
             {sessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                 <div className="flex-1">
                   <p className="font-medium text-gray-800">{session.question}</p>
                   <p className="text-sm text-gray-500">
-                    Created: {new Date(session.created_at).toLocaleString()}
+                    Session Name: <span className="font-semibold">{session.id}</span> | Created: {new Date(session.created_at).toLocaleString()}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
