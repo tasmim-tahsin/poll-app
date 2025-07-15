@@ -353,7 +353,7 @@ const ResultPage = () => {
               Refresh Results
             </button>
             <a
-              href="/"
+              href="/admin"
               className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition duration-200"
             >
               Admin Panel
