@@ -5,6 +5,7 @@ import { supabase } from '../utils/supabaseClient';
 const HomePage = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     fetchActiveSessions();
@@ -27,6 +28,13 @@ const HomePage = () => {
     }
   };
 
+  const handleCopy = (id) => {
+    const url = `${window.location.origin}/poll/${id}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -46,17 +54,25 @@ const HomePage = () => {
         {sessions.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sessions.map((session) => (
-              <Link
-                key={session.id}
-                to={`/poll/${session.id}`}
-                className="block bg-white rounded-lg shadow-md p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-              >
-                <h2 className="text-xl font-bold text-blue-600 mb-2">{session.id}</h2>
-                <p className="text-gray-700">{session.question}</p>
-                <p className="text-sm text-gray-500 mt-4">
-                  Created: {new Date(session.created_at).toLocaleDateString()}
-                </p>
-              </Link>
+              <div key={session.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col justify-between">
+                <div>
+                  <Link to={`/poll/${session.id}`}>
+                    <h2 className="text-xl font-bold text-blue-600 mb-2 hover:underline">{session.id}</h2>
+                  </Link>
+                  <p className="text-gray-700">{session.question}</p>
+                </div>
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500">
+                    Created: {new Date(session.created_at).toLocaleDateString()}
+                  </p>
+                  <button
+                    onClick={() => handleCopy(session.id)}
+                    className="mt-2 w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors duration-300"
+                  >
+                    {copiedId === session.id ? 'Copied!' : 'Copy Poll URL'}
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         ) : (
