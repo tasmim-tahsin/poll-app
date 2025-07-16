@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import QRCodeDisplay from '../components/QRCodeDisplay';
+import { Link } from 'react-router-dom';
 
 const CreatePollPage = () => {
   const [sessionId, setSessionId] = useState('');
   const [password, setPassword] = useState('');
   const [questions, setQuestions] = useState([{ question_text: '', options: ['', ''] }]);
   const [loading, setLoading] = useState(false);
+  const [createdPoll, setCreatedPoll] = useState(null);
   const navigate = useNavigate();
 
   const addQuestion = () => {
@@ -95,9 +98,7 @@ const CreatePollPage = () => {
         if (optionsError) throw optionsError;
       }
 
-      alert('Poll created successfully!');
-      navigate(`/poll/${sessionData.id}`);
-      
+      setCreatedPoll(sessionData);
     } catch (error) {
       console.error('Error creating session:', error);
       alert('Error creating session. Please try again.');
@@ -105,6 +106,49 @@ const CreatePollPage = () => {
       setLoading(false);
     }
   };
+
+  const handleCopy = (id) => {
+    const url = `${window.location.origin}/poll/${id}`;
+    navigator.clipboard.writeText(url);
+    alert('Poll URL copied to clipboard!');
+  };
+
+  if (createdPoll) {
+    const pollUrl = `${window.location.origin}/poll/${createdPoll.id}`;
+    return (
+      <div className="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-md p-8 text-center max-w-md">
+          <h1 className="text-2xl font-bold text-green-600 mb-4">Poll Created Successfully!</h1>
+          <p className="text-gray-700 mb-6">Share your poll with others using the link or QR code below.</p>
+          
+          <div className="mb-6">
+            <QRCodeDisplay qrCodeUrl={pollUrl} />
+          </div>
+
+          <div className="space-y-4">
+            <input
+              type="text"
+              readOnly
+              value={pollUrl}
+              className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50 text-center"
+            />
+            <button
+              onClick={() => handleCopy(createdPoll.id)}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition duration-200"
+            >
+              Copy Poll Link
+            </button>
+            <Link
+              to={`/poll/${createdPoll.id}`}
+              className="w-full block bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition duration-200"
+            >
+              Go to Poll
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
