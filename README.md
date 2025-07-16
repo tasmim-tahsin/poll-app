@@ -3,7 +3,7 @@
 https://my-poll-app.netlify.app/
 
 # Admin password
-admin***
+********
 
 # PollApp - Real-time Polling Application
 
