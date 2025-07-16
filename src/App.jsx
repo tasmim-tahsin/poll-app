@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import AdminPage from './pages/AdminPage';
 import PollPage from './pages/PollPage';
 import ResultPage from './pages/ResultPage';
+import CreatePollPage from './pages/CreatePollPage';
 import Navbar from './components/Navbar';
 
 const Layout = () => {
@@ -23,6 +24,7 @@ const App = () => (
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/create" element={<CreatePollPage />} />
         <Route path="/poll/:sessionId" element={<PollPage />} />
         <Route path="/result/:sessionId" element={<ResultPage />} />
       </Route>

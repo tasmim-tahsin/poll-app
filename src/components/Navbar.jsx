@@ -16,6 +16,7 @@ export default function Navbar() {
             {/* Primary Navbar items */}
             <div className="flex items-center space-x-1">
               <Link to="/" className="py-4 px-2 text-gray-500 font-semibold hover:text-blue-500 transition duration-300">Home</Link>
+              <Link to="/create" className="py-4 px-2 text-gray-500 font-semibold hover:text-blue-500 transition duration-300">Create Poll</Link>
               <Link to="/admin" className="py-4 px-2 text-gray-500 font-semibold hover:text-blue-500 transition duration-300">Admin</Link>
             </div>
           </div>

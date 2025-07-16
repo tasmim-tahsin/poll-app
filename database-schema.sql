@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS sessions;
 CREATE TABLE sessions (
   id TEXT PRIMARY KEY,
   admin_password TEXT DEFAULT 'admin123',
+  user_password TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   is_active BOOLEAN DEFAULT true
 );

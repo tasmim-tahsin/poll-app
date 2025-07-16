@@ -13,6 +13,8 @@ const PollPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [password, setPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     fetchSessionData();
@@ -36,7 +38,33 @@ const PollPage = () => {
 
       setSession(sessionData);
 
-      // Fetch questions and their options
+      if (sessionData.user_password) {
+        setLoading(false);
+      } else {
+        setIsAuthenticated(true);
+        // Fetch questions and their options
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('questions')
+          .select('*, session_options(*)')
+          .eq('session_id', sessionId)
+          .order('question_order');
+
+        if (questionsError) throw questionsError;
+
+        setQuestions(questionsData || []);
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error fetching session data:', error);
+      alert('Error loading poll. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (password === session.user_password) {
+      setIsAuthenticated(true);
+      setLoading(true);
       const { data: questionsData, error: questionsError } = await supabase
         .from('questions')
         .select('*, session_options(*)')
@@ -46,11 +74,9 @@ const PollPage = () => {
       if (questionsError) throw questionsError;
 
       setQuestions(questionsData || []);
-    } catch (error) {
-      console.error('Error fetching session data:', error);
-      alert('Error loading poll. Please try again.');
-    } finally {
       setLoading(false);
+    } else {
+      alert('Incorrect password');
     }
   };
 
@@ -108,6 +134,30 @@ const PollPage = () => {
         <div className="bg-white p-8 rounded-lg shadow-md text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Poll Not Found</h1>
           <p className="text-gray-600">This poll session does not exist or has been removed.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md w-96">
+          <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Password Protected Poll</h1>
+          <input
+            type="password"
+            placeholder="Enter poll password"
+            className="w-full border border-gray-300 p-3 mb-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+          />
+          <button 
+            onClick={handlePasswordSubmit}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg transition duration-200"
+          >
+            Enter
+          </button>
         </div>
       </div>
     );
