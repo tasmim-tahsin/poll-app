@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
+import Papa from 'papaparse';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -198,6 +201,61 @@ const ResultPage = () => {
 
   const votersList = getVotersList();
 
+  const exportToCSV = () => {
+    const allResults = [];
+    questions.forEach(q => {
+      const { results } = getVoteResults(q);
+      results.forEach(r => {
+        allResults.push({
+          question: q.question_text,
+          option: r.text,
+          votes: r.count
+        });
+      });
+    });
+    const csv = Papa.unparse(allResults);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `poll-results-${sessionId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Poll Results: ${sessionId}`, 14, 16);
+    
+    let y = 25;
+    questions.forEach((q, i) => {
+      doc.text(`${i + 1}. ${q.question_text}`, 14, y);
+      y += 7;
+      const { results } = getVoteResults(q);
+      const tableColumn = ["Option", "Votes", "Percentage"];
+      const tableRows = [];
+
+      results.forEach(r => {
+        const rowData = [
+          r.text,
+          r.count,
+          `${r.percentage}%`
+        ];
+        tableRows.push(rowData);
+      });
+
+      doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: y,
+      });
+
+      y = doc.autoTable.previous.finalY + 10;
+    });
+
+    doc.save(`poll-results-${sessionId}.pdf`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-6xl mx-auto">
@@ -213,6 +271,10 @@ const ResultPage = () => {
               }`}>
                 {session.is_active ? 'Active' : 'Inactive'}
               </span>
+            </div>
+            <div className="mt-4 flex justify-center items-center space-x-2">
+              <button onClick={exportToCSV} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition duration-200">Export as CSV</button>
+              <button onClick={exportToPDF} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition duration-200">Export as PDF</button>
             </div>
           </div>
         </div>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import QRCodeDisplay from '../components/QRCodeDisplay';
+import Papa from 'papaparse';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const AdminPage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -147,6 +150,105 @@ const AdminPage = () => {
     if (!error) {
       fetchSessions();
     }
+  };
+
+  const exportToCSV = async (session) => {
+    const { data: questions, error: questionsError } = await supabase
+      .from('questions')
+      .select('*, session_options(*)')
+      .eq('session_id', session.id);
+
+    if (questionsError) {
+      console.error('Error fetching questions for CSV export:', questionsError);
+      return;
+    }
+
+    const { data: votes, error: votesError } = await supabase
+      .from('votes')
+      .select('*, questions!inner(session_id)')
+      .eq('questions.session_id', session.id);
+
+    if (votesError) {
+      console.error('Error fetching votes for CSV export:', votesError);
+      return;
+    }
+
+    const allResults = [];
+    questions.forEach(q => {
+      const questionVotes = votes.filter(vote => vote.question_id === q.id);
+      q.session_options.forEach(o => {
+        allResults.push({
+          question: q.question_text,
+          option: o.option_text,
+          votes: questionVotes.filter(v => v.selected_option_id === o.id).length
+        });
+      });
+    });
+
+    const csv = Papa.unparse(allResults);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `poll-results-${session.id}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToPDF = async (session) => {
+    const { data: questions, error: questionsError } = await supabase
+      .from('questions')
+      .select('*, session_options(*)')
+      .eq('session_id', session.id);
+
+    if (questionsError) {
+      console.error('Error fetching questions for PDF export:', questionsError);
+      return;
+    }
+
+    const { data: votes, error: votesError } = await supabase
+      .from('votes')
+      .select('*, questions!inner(session_id)')
+      .eq('questions.session_id', session.id);
+
+    if (votesError) {
+      console.error('Error fetching votes for PDF export:', votesError);
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.text(`Poll Results: ${session.id}`, 14, 16);
+    
+    let y = 25;
+    questions.forEach((q, i) => {
+      doc.text(`${i + 1}. ${q.question_text}`, 14, y);
+      y += 7;
+      const questionVotes = votes.filter(vote => vote.question_id === q.id);
+      const totalVotes = questionVotes.length;
+      const tableColumn = ["Option", "Votes", "Percentage"];
+      const tableRows = [];
+
+      q.session_options.forEach(o => {
+        const count = questionVotes.filter(v => v.selected_option_id === o.id).length;
+        const percentage = totalVotes > 0 ? ((count / totalVotes) * 100).toFixed(1) : 0;
+        const rowData = [
+          o.option_text,
+          count,
+          `${percentage}%`
+        ];
+        tableRows.push(rowData);
+      });
+
+      doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: y,
+      });
+
+      y = doc.autoTable.previous.finalY + 10;
+    });
+
+    doc.save(`poll-results-${session.id}.pdf`);
   };
 
   if (!isAuthenticated) {
@@ -333,6 +435,8 @@ const AdminPage = () => {
                   >
                     Results
                   </a>
+                  <button onClick={() => exportToCSV(session)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm transition duration-200">CSV</button>
+                  <button onClick={() => exportToPDF(session)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm transition duration-200">PDF</button>
                 </div>
               </div>
             ))}
