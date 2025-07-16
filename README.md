@@ -3,11 +3,11 @@
 https://my-poll-app.netlify.app/
 
 # Admin password
-admin123
+admin***
 
 # PollApp - Real-time Polling Application
 
-![PollApp Screenshot](./screenshot.png) *Replace with actual screenshot*
+<a href="https://ibb.co/WWC6fMMg"><img src="https://i.ibb.co/XZHbtKKS/Screenshot-2025-07-17-002851.png" alt="Screenshot-2025-07-17-002851" border="0"></a>
 
 ## 🚀 Features
 
@@ -19,7 +19,7 @@ admin123
 - **Session management** with activation/deactivation
 
 ### 👨‍💻 Admin Features
-- 🔐 **Password-protected admin panel**
+- 🔐 **Password-protected admin panel and poll questions**
 - 📝 **Create polls** with multiple question types
 - 🎨 **Custom theming** for each session
 - 📊 **View live results** with interactive charts
@@ -27,10 +27,13 @@ admin123
 - 🔄 **Real-time updates** on participant count
 
 ### 👥 User Features
+- 📝 **Create polls** with multiple question types
+- 🔐 **Password-protected** poll questions
 - 📱 **Mobile-friendly** voting interface
 - 🔍 **View live results** after voting
 - 📊 **Interactive visualizations** of poll data
 - 🏷 **Anonymous participation** without login
+- 📥 **Export results** to CSV/PDF formats
 
 ## 🛠 Technologies Used
 
