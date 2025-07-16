@@ -5,9 +5,8 @@ import QRCodeDisplay from '../components/QRCodeDisplay';
 const AdminPage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '']);
   const [customSessionId, setCustomSessionId] = useState('');
+  const [questions, setQuestions] = useState([{ question_text: '', options: ['', ''] }]);
   const [sessionId, setSessionId] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [sessions, setSessions] = useState([]);
@@ -22,7 +21,7 @@ const AdminPage = () => {
   const fetchSessions = async () => {
     const { data } = await supabase
       .from('sessions')
-      .select('*')
+      .select('*, questions(*)')
       .order('created_at', { ascending: false });
     setSessions(data || []);
   };
@@ -35,25 +34,45 @@ const AdminPage = () => {
     }
   };
 
-  const addOption = () => {
-    setOptions([...options, '']);
+  const addQuestion = () => {
+    setQuestions([...questions, { question_text: '', options: ['', ''] }]);
   };
 
-  const removeOption = (index) => {
-    if (options.length > 2) {
-      setOptions(options.filter((_, i) => i !== index));
+  const removeQuestion = (index) => {
+    if (questions.length > 1) {
+      setQuestions(questions.filter((_, i) => i !== index));
     }
   };
 
-  const updateOption = (index, value) => {
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
+  const updateQuestionText = (index, value) => {
+    const newQuestions = [...questions];
+    newQuestions[index].question_text = value;
+    setQuestions(newQuestions);
+  };
+
+  const addOption = (questionIndex) => {
+    const newQuestions = [...questions];
+    newQuestions[questionIndex].options.push('');
+    setQuestions(newQuestions);
+  };
+
+  const removeOption = (questionIndex, optionIndex) => {
+    const newQuestions = [...questions];
+    if (newQuestions[questionIndex].options.length > 2) {
+      newQuestions[questionIndex].options = newQuestions[questionIndex].options.filter((_, i) => i !== optionIndex);
+      setQuestions(newQuestions);
+    }
+  };
+
+  const updateOption = (questionIndex, optionIndex, value) => {
+    const newQuestions = [...questions];
+    newQuestions[questionIndex].options[optionIndex] = value;
+    setQuestions(newQuestions);
   };
 
   const handleCreateSession = async () => {
-    if (!customSessionId.trim() || !question.trim() || options.some(opt => !opt.trim())) {
-      alert('Please fill in the session name, question, and all options');
+    if (!customSessionId.trim() || questions.some(q => !q.question_text.trim() || q.options.some(opt => !opt.trim()))) {
+      alert('Please fill in the session name, all questions, and all options');
       return;
     }
 
@@ -62,7 +81,7 @@ const AdminPage = () => {
       // Create session
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
-        .insert([{ id: customSessionId.trim(), question: question.trim() }])
+        .insert([{ id: customSessionId.trim() }])
         .select()
         .single();
 
@@ -75,20 +94,31 @@ const AdminPage = () => {
         return;
       }
 
-      // Create options
-      const optionsData = options
-        .filter(opt => opt.trim())
-        .map((option, index) => ({
-          session_id: sessionData.id,
-          option_text: option.trim(),
-          option_order: index + 1
-        }));
+      // Create questions and options
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        const { data: questionData, error: questionError } = await supabase
+          .from('questions')
+          .insert([{ session_id: sessionData.id, question_text: q.question_text.trim(), question_order: i + 1 }])
+          .select()
+          .single();
+        
+        if (questionError) throw questionError;
 
-      const { error: optionsError } = await supabase
-        .from('session_options')
-        .insert(optionsData);
+        const optionsData = q.options
+          .filter(opt => opt.trim())
+          .map((option, index) => ({
+            question_id: questionData.id,
+            option_text: option.trim(),
+            option_order: index + 1
+          }));
 
-      if (optionsError) throw optionsError;
+        const { error: optionsError } = await supabase
+          .from('session_options')
+          .insert(optionsData);
+
+        if (optionsError) throw optionsError;
+      }
 
       setSessionId(sessionData.id);
       const url = `${window.location.origin}/poll/${sessionData.id}`;
@@ -96,8 +126,7 @@ const AdminPage = () => {
       
       // Reset form
       setCustomSessionId('');
-      setQuestion('');
-      setOptions(['', '']);
+      setQuestions([{ question_text: '', options: ['', ''] }]);
       
       // Refresh sessions list
       fetchSessions();
@@ -171,43 +200,58 @@ const AdminPage = () => {
                 onChange={(e) => setCustomSessionId(e.target.value)}
               />
 
-              <input
-                type="text"
-                placeholder="Enter poll question"
-                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-              />
-
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Options:</label>
-                {options.map((option, index) => (
-                  <div key={index} className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder={`Option ${index + 1}`}
-                      className="flex-1 border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={option}
-                      onChange={(e) => updateOption(index, e.target.value)}
-                    />
-                    {options.length > 2 && (
-                      <button
-                        onClick={() => removeOption(index)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition duration-200"
-                      >
-                        ×
-                      </button>
+              {questions.map((q, qIndex) => (
+                <div key={qIndex} className="p-4 border border-gray-200 rounded-lg space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium text-gray-700">Question {qIndex + 1}</h3>
+                    {questions.length > 1 && (
+                      <button onClick={() => removeQuestion(qIndex)} className="text-red-500 hover:text-red-700">Remove</button>
                     )}
                   </div>
-                ))}
-                
-                <button
-                  onClick={addOption}
-                  className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition duration-200"
-                >
-                  + Add Option
-                </button>
-              </div>
+                  <input
+                    type="text"
+                    placeholder={`Enter poll question ${qIndex + 1}`}
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={q.question_text}
+                    onChange={(e) => updateQuestionText(qIndex, e.target.value)}
+                  />
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Options:</label>
+                    {q.options.map((option, oIndex) => (
+                      <div key={oIndex} className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={`Option ${oIndex + 1}`}
+                          className="flex-1 border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={option}
+                          onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                        />
+                        {q.options.length > 2 && (
+                          <button
+                            onClick={() => removeOption(qIndex, oIndex)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition duration-200"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => addOption(qIndex)}
+                      className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition duration-200"
+                    >
+                      + Add Option
+                    </button>
+                  </div>
+                </div>
+              ))}
+              
+              <button
+                onClick={addQuestion}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition duration-200"
+              >
+                + Add Another Question
+              </button>
 
               <button 
                 onClick={handleCreateSession}
@@ -256,9 +300,11 @@ const AdminPage = () => {
             {sessions.map((session) => (
               <div key={session.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                 <div className="flex-1">
-                  <p className="font-medium text-gray-800">{session.question}</p>
+                  <p className="font-medium text-gray-800">
+                    Session Name: <span className="font-semibold">{session.id}</span>
+                  </p>
                   <p className="text-sm text-gray-500">
-                    Session Name: <span className="font-semibold">{session.id}</span> | Created: {new Date(session.created_at).toLocaleString()}
+                    Questions: {session.questions.length} | Created: {new Date(session.created_at).toLocaleString()}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">

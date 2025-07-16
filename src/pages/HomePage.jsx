@@ -15,7 +15,7 @@ const HomePage = () => {
     try {
       const { data, error } = await supabase
         .from('sessions')
-        .select('*')
+        .select('*, questions(count)')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
@@ -59,7 +59,9 @@ const HomePage = () => {
                   <Link to={`/poll/${session.id}`}>
                     <h2 className="text-xl font-bold text-blue-600 mb-2 hover:underline">{session.id}</h2>
                   </Link>
-                  <p className="text-gray-700">{session.question}</p>
+                  <p className="text-gray-700">
+                    {session.questions[0]?.count || 0} {session.questions[0]?.count === 1 ? 'question' : 'questions'}
+                  </p>
                 </div>
                 <div className="mt-4">
                   <p className="text-sm text-gray-500">

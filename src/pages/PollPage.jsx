@@ -6,9 +6,9 @@ const PollPage = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
-  const [options, setOptions] = useState([]);
+  const [questions, setQuestions] = useState([]);
   const [name, setName] = useState('');
-  const [selectedOption, setSelectedOption] = useState('');
+  const [selectedOptions, setSelectedOptions] = useState({});
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,16 +36,16 @@ const PollPage = () => {
 
       setSession(sessionData);
 
-      // Fetch session options
-      const { data: optionsData, error: optionsError } = await supabase
-        .from('session_options')
-        .select('*')
+      // Fetch questions and their options
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('questions')
+        .select('*, session_options(*)')
         .eq('session_id', sessionId)
-        .order('option_order');
+        .order('question_order');
 
-      if (optionsError) throw optionsError;
+      if (questionsError) throw questionsError;
 
-      setOptions(optionsData || []);
+      setQuestions(questionsData || []);
     } catch (error) {
       console.error('Error fetching session data:', error);
       alert('Error loading poll. Please try again.');
@@ -54,9 +54,13 @@ const PollPage = () => {
     }
   };
 
+  const handleOptionChange = (questionId, optionId) => {
+    setSelectedOptions(prev => ({ ...prev, [questionId]: optionId }));
+  };
+
   const handleSubmit = async () => {
-    if (!selectedOption) {
-      alert('Please select an option');
+    if (Object.keys(selectedOptions).length !== questions.length) {
+      alert('Please answer all questions');
       return;
     }
 
@@ -67,14 +71,14 @@ const PollPage = () => {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('votes')
-        .insert([{
-          session_id: sessionId,
-          voter_name: isAnonymous ? null : name.trim(),
-          selected_option_id: selectedOption,
-          is_anonymous: isAnonymous
-        }]);
+      const votes = Object.entries(selectedOptions).map(([question_id, selected_option_id]) => ({
+        question_id,
+        voter_name: isAnonymous ? null : name.trim(),
+        selected_option_id,
+        is_anonymous: isAnonymous
+      }));
+
+      const { error } = await supabase.from('votes').insert(votes);
 
       if (error) throw error;
 
@@ -140,8 +144,8 @@ const PollPage = () => {
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">{session.question}</h1>
-            <p className="text-gray-600">Select your answer below</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Poll Session: {sessionId}</h1>
+            <p className="text-gray-600">Select your answers below</p>
           </div>
 
           <div className="space-y-6">
@@ -170,37 +174,41 @@ const PollPage = () => {
               )}
             </div>
 
-            {/* Poll Options */}
-            <div className="space-y-3">
-              <label className="block text-lg font-medium text-gray-700 mb-3">Choose your answer:</label>
-              {options.map((option) => (
-                <label
-                  key={option.id}
-                  className={`block p-4 border-2 rounded-lg cursor-pointer transition duration-200 ${
-                    selectedOption === option.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <input
-                      type="radio"
-                      name="pollOption"
-                      value={option.id}
-                      checked={selectedOption === option.id}
-                      onChange={(e) => setSelectedOption(e.target.value)}
-                      className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <span className="text-lg text-gray-800">{option.option_text}</span>
-                  </div>
-                </label>
-              ))}
-            </div>
+            {/* Poll Questions */}
+            {questions.map((question, index) => (
+              <div key={question.id} className="p-4 border-t border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">{index + 1}. {question.question_text}</h2>
+                <div className="space-y-3">
+                  {question.session_options.map((option) => (
+                    <label
+                      key={option.id}
+                      className={`block p-4 border-2 rounded-lg cursor-pointer transition duration-200 ${
+                        selectedOptions[question.id] === option.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name={`pollOption-${question.id}`}
+                          value={option.id}
+                          checked={selectedOptions[question.id] === option.id}
+                          onChange={() => handleOptionChange(question.id, option.id)}
+                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        />
+                        <span className="text-lg text-gray-800">{option.option_text}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
 
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              disabled={submitting || !selectedOption}
+              disabled={submitting || Object.keys(selectedOptions).length !== questions.length}
               className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-4 rounded-lg text-lg font-medium transition duration-200"
             >
               {submitting ? 'Submitting...' : 'Submit Vote'}
