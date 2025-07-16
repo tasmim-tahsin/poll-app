@@ -7,7 +7,7 @@ admin***
 
 # PollApp - Real-time Polling Application
 
-<a href="https://ibb.co/WWC6fMMg"><img src="https://i.ibb.co/XZHbtKKS/Screenshot-2025-07-17-002851.png" alt="Screenshot-2025-07-17-002851" border="0"></a>
+<a href="https://ibb.co/kV5HC6Fb"><img src="https://i.ibb.co/gbmjKFCq/130shots-so.png" alt="130shots-so" border="0"></a>
 
 ## 🚀 Features
 
